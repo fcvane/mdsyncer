@@ -2,7 +2,7 @@
 # @Time    : 2020/9/7 10:05
 # @Author  : Fcvane
 # @Param   : 
-# @File    : tool.py
+# @File    : mdtool.py
 
 import logging.handlers
 import datetime
@@ -41,7 +41,9 @@ class Logger(logging.Logger):
 
         fh = logging.FileHandler(logFile, mode='a')
         ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
+        # 调式
+        # ch.setLevel(logging.INFO)
+        ch.setLevel(logging.WARNING)
         fh.setLevel(logging.INFO)
         formatter = logging.Formatter(
             # '[ %(asctime)s ] - [ %(filename)15s ] - [ line:%(lineno)5d ] - %(levelname)5s : %(message)s', )
@@ -248,6 +250,7 @@ class DbManager():
             sys.exit()
             # try:
         self.cur.execute(sql)
+        self.conn.commit()
         # except Exception as err:
         #     log.error("sql执行异常: " + str(err))
 
@@ -266,7 +269,7 @@ class xmler():
         self.auth = auth
 
     def dbCFGInfo(self):
-        taskName = Variable().DB_PATH + os.sep + 'db_conf.xml'
+        taskName = Variable().DB_PATH + os.sep + 'dbconf.xml'
         # log.info('解析XML文件 {taskName}'.format(taskName=taskName))
         result = {}
         try:
@@ -293,5 +296,6 @@ class xmler():
         # print(result)
         return result
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     print(Crypter.encrypt('abc123'))

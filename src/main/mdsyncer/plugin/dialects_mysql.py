@@ -3,7 +3,7 @@
 # @Author  : Fcvane
 # @Param   : 
 # @File    : dialects_mysql.py
-import tool
+import mdtool
 import sys
 
 
@@ -17,9 +17,9 @@ class MysqlDialect():
             self.user = value['user']
             self.passwd = value['passwd']
             self.dbname = value['dbname']
-            self.dbtype = value['dbtype']
+            self.dbtype = value['dbtype'].lower()
         # 调用工具类
-        self.dbsrc_executor = tool.DbManager(self.host, self.port, self.user, self.passwd, self.dbname, self.dbtype)
+        self.dbsrc_executor = mdtool.DbManager(self.host, self.port, self.user, self.passwd, self.dbname, self.dbtype)
         # values
         for value in dbmgr.values():
             self.host_mgr = value['host']
@@ -29,8 +29,8 @@ class MysqlDialect():
             self.dbname_mgr = value['dbname']
             self.dbtype_mgr = value['dbtype']
         # 管理库
-        self.dbmgr_executor = tool.DbManager(self.host_mgr, self.port_mgr, self.user_mgr, self.passwd_mgr,
-                                             self.dbname_mgr, self.dbtype_mgr)
+        self.dbmgr_executor = mdtool.DbManager(self.host_mgr, self.port_mgr, self.user_mgr, self.passwd_mgr,
+                                               self.dbname_mgr, self.dbtype_mgr)
 
     # 表信息
     def mdsyncer_tables(self):
@@ -81,7 +81,7 @@ class MysqlDialect():
         """
         # 加载数据前先删除历史记录
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s表信息数据加载到mdsyncer库表mdsyncer_tables成功" % self.dbtype)
+        mdtool.log.info("%s表信息数据加载到mdsyncer库表mdsyncer_tables成功" % self.dbtype)
 
     # 字段信息
     def mdsyncer_columns(self):
@@ -95,8 +95,16 @@ class MysqlDialect():
                     table_name,
                     column_name,
                     ordinal_position,
-                    column_default,
-                    is_nullable,
+                    CASE WHEN 
+                        (column_default IS NOT NULL AND data_type = 'char') 
+                        or 
+                        (column_default IS NOT NULL AND data_type = 'varchar' )
+                        then concat("'",column_default,"'")
+                    ELSE column_default END column_default,
+                    CASE WHEN
+                        is_nullable = 'YES' THEN 'Y'
+                    ELSE
+                        'N' END is_nullable,
                     data_type,
                     character_maximum_length,
                     numeric_precision,
@@ -122,8 +130,16 @@ class MysqlDialect():
                     table_name,
                     column_name,
                     ordinal_position,
-                    column_default,
-                    is_nullable,
+                    CASE WHEN 
+                        (column_default IS NOT NULL AND data_type = 'char') 
+                        or 
+                        (column_default IS NOT NULL AND data_type = 'varchar' )
+                        then concat("'",column_default,"'")
+                    ELSE column_default END column_default,
+                    CASE WHEN
+                        is_nullable = 'YES' THEN 'Y'
+                    ELSE
+                        'N' END is_nullable,
                     data_type,
                     character_maximum_length,
                     numeric_precision,
@@ -161,7 +177,7 @@ class MysqlDialect():
                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                """
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s字段信息数据加载到mdsyncer库表mdsyncer_columns成功" % self.dbtype)
+        mdtool.log.info("%s字段信息数据加载到mdsyncer库表mdsyncer_columns成功" % self.dbtype)
 
     # 约束信息
     # 从MySQL 5.7开始 ：该CHECK子句已解析，但被所有存储引擎忽略
@@ -235,7 +251,7 @@ class MysqlDialect():
                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                """
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s约束信息数据加载到mdsyncer库表tables_constraints成功" % self.dbtype)
+        mdtool.log.info("%s约束信息数据加载到mdsyncer库表tables_constraints成功" % self.dbtype)
 
     # 索引信息
     def tables_indexes(self):
@@ -273,7 +289,7 @@ class MysqlDialect():
                             elif i[1] == 1:
                                 dataset.append((self.dbtype, self.dbname, i[0], 'NONUNIQUE', i[2], i[4], i[3], i[10]))
                             else:
-                                tool.log.error("索引数据异常")
+                                mdtool.log.error("索引数据异常")
                                 sys.exit()
         else:
             dataset = []
@@ -313,7 +329,7 @@ class MysqlDialect():
                                     dataset.append(
                                         (self.dbtype, self.dbname, i[0], 'NONUNIQUE', i[2], i[4], i[3], i[10]))
                                 else:
-                                    tool.log.error("索引数据异常")
+                                    mdtool.log.error("索引数据异常")
                                     sys.exit()
         # 写入dbsyncer管理库 - mysql
         sql = """
@@ -330,11 +346,11 @@ class MysqlDialect():
                (%s, %s, %s, %s, %s, %s, %s, %s)
                """
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s索引数据数据加载到mdsyncer库表tables_indexes成功" % self.dbtype)
+        mdtool.log.info("%s索引数据数据加载到mdsyncer库表tables_indexes成功" % self.dbtype)
 
 if __name__=='__main__':
-    dbsrc = tool.xmler('MYSQL_172.21.86.205').dbCFGInfo()
-    dbmgr = tool.xmler('MGR_172.21.86.205').dbCFGInfo()
+    dbsrc = mdtool.xmler('MYSQL_172.21.86.205').dbCFGInfo()
+    dbmgr = mdtool.xmler('MGR_172.21.86.205').dbCFGInfo()
     # tables_in = 'dept,dsr_work_order_history,emp'
     # dialect = MysqlDialect(dbsrc, dbmgr, tables_in)
     dialect = MysqlDialect(dbsrc, dbmgr)

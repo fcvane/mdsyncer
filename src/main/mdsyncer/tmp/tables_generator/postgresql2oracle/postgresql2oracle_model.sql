@@ -1,0 +1,1 @@
+CREATE TABLE bfm_staff_org_his(staff_org_his_id varchar2(255) not null,staff_id number(10) not null,state char(1) not null,org_id number(10) not null,state_date timestamp not null,sp_id number(10),is_default char(1) default 'N');

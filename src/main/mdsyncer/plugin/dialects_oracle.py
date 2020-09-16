@@ -4,7 +4,7 @@
 # @Param   : 
 # @File    : dialects_oracle.py
 
-import tool
+import mdtool
 
 
 class OracleDialect():
@@ -17,9 +17,9 @@ class OracleDialect():
             self.user = value['user']
             self.passwd = value['passwd']
             self.dbname = value['dbname']
-            self.dbtype = value['dbtype']
+            self.dbtype = value['dbtype'].lower()
         # 调用工具类
-        self.dbsrc_executor = tool.DbManager(self.host, self.port, self.user, self.passwd, self.dbname, self.dbtype)
+        self.dbsrc_executor = mdtool.DbManager(self.host, self.port, self.user, self.passwd, self.dbname, self.dbtype)
 
         # values
         for value in dbmgr.values():
@@ -30,8 +30,8 @@ class OracleDialect():
             self.dbname_mgr = value['dbname']
             self.dbtype_mgr = value['dbtype']
         # 管理库
-        self.dbmgr_executor = tool.DbManager(self.host_mgr, self.port_mgr, self.user_mgr, self.passwd_mgr,
-                                             self.dbname_mgr, self.dbtype_mgr)
+        self.dbmgr_executor = mdtool.DbManager(self.host_mgr, self.port_mgr, self.user_mgr, self.passwd_mgr,
+                                               self.dbname_mgr, self.dbtype_mgr)
 
     # 表信息
     def mdsyncer_tables(self):
@@ -79,7 +79,7 @@ class OracleDialect():
         """
         # 加载数据前先删除历史记录
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s表信息数据加载到mdsyncer库表mdsyncer_tables成功" % self.dbtype)
+        mdtool.log.info("%s表信息数据加载到mdsyncer库表mdsyncer_tables成功" % self.dbtype)
 
     # 字段信息
     def mdsyncer_columns(self):
@@ -159,7 +159,7 @@ class OracleDialect():
            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
            """
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s字段信息数据加载到mdsyncer库表mdsyncer_columns成功" % self.dbtype)
+        mdtool.log.info("%s字段信息数据加载到mdsyncer库表mdsyncer_columns成功" % self.dbtype)
 
     # 约束信息
     def tables_constraints(self):
@@ -306,7 +306,7 @@ class OracleDialect():
            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
            """
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s约束信息数据加载到mdsyncer库表tables_constraints成功" % self.dbtype)
+        mdtool.log.info("%s约束信息数据加载到mdsyncer库表tables_constraints成功" % self.dbtype)
 
     # 索引信息
     def tables_indexes(self):
@@ -373,14 +373,14 @@ class OracleDialect():
            (%s, %s, %s, %s, %s, %s, %s, %s)
            """
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s索引数据数据加载到mdsyncer库表tables_indexes成功" % self.dbtype)
+        mdtool.log.info("%s索引数据数据加载到mdsyncer库表tables_indexes成功" % self.dbtype)
 
 if __name__=='__main__':
-    dbsrc = tool.xmler('ORACLE_10.45.59.246').dbCFGInfo()
-    dbmgr = tool.xmler('MGR_172.21.86.205').dbCFGInfo()
-    tables_in = 'xt_school_res_info,xt_school_ods_info,bfm_bulletin_recipient'
-    dialect = OracleDialect(dbsrc, dbmgr, tables_in)
-    # dialect = OracleDialect(dbsrc, dbmgr)
+    dbsrc = mdtool.xmler('ORACLE_10.45.59.246').dbCFGInfo()
+    dbmgr = mdtool.xmler('MGR_172.21.86.205').dbCFGInfo()
+    # tables_in = 'xt_school_res_info,xt_school_ods_info,bfm_bulletin_recipient'
+    # dialect = OracleDialect(dbsrc, dbmgr, tables_in)
+    dialect = OracleDialect(dbsrc, dbmgr)
     dialect.mdsyncer_tables()
     dialect.mdsyncer_columns()
     dialect.tables_constraints()

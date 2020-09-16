@@ -3,7 +3,7 @@
 # @Author  : Fcvane
 # @Param   : 
 # @File    : dialects_postgresql.py
-import tool
+import mdtool
 import sys
 
 
@@ -17,9 +17,9 @@ class PGDialect():
             self.user = value['user']
             self.passwd = value['passwd']
             self.dbname = value['dbname']
-            self.dbtype = value['dbtype']
+            self.dbtype = value['dbtype'].lower()
         # 调用工具类
-        self.dbsrc_executor = tool.DbManager(self.host, self.port, self.user, self.passwd, self.dbname, self.dbtype)
+        self.dbsrc_executor = mdtool.DbManager(self.host, self.port, self.user, self.passwd, self.dbname, self.dbtype)
         # values
         for value in dbmgr.values():
             self.host_mgr = value['host']
@@ -29,8 +29,8 @@ class PGDialect():
             self.dbname_mgr = value['dbname']
             self.dbtype_mgr = value['dbtype']
         # 管理库
-        self.dbmgr_executor = tool.DbManager(self.host_mgr, self.port_mgr, self.user_mgr, self.passwd_mgr,
-                                             self.dbname_mgr, self.dbtype_mgr)
+        self.dbmgr_executor = mdtool.DbManager(self.host_mgr, self.port_mgr, self.user_mgr, self.passwd_mgr,
+                                               self.dbname_mgr, self.dbtype_mgr)
         # schema获取
         query = """
         SHOW SEARCH_PATH
@@ -88,7 +88,7 @@ class PGDialect():
            """
         # 加载数据前先删除历史记录
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s表信息数据加载到mdsyncer库表mdsyncer_tables成功" % self.dbtype)
+        mdtool.log.info("%s表信息数据加载到mdsyncer库表mdsyncer_tables成功" % self.dbtype)
 
     # 字段信息
     def mdsyncer_columns(self):
@@ -103,7 +103,10 @@ class PGDialect():
                 col.column_name,
                 col.ordinal_position,
                 col.column_default,
-                col.is_nullable,
+                CASE WHEN
+                    col.is_nullable = 'YES' THEN 'Y'
+                ELSE
+                    'N' END is_nullable,
                 col.data_type,
                 col.character_maximum_length,
                 col.numeric_precision,
@@ -146,7 +149,10 @@ class PGDialect():
                     col.column_name,
                     col.ordinal_position,
                     col.column_default,
-                    col.is_nullable,
+                    CASE WHEN
+                        col.is_nullable = 'YES' THEN 'Y'
+                    ELSE
+                        'N' END is_nullable,
                     col.data_type,
                     col.character_maximum_length,
                     col.numeric_precision,
@@ -198,7 +204,7 @@ class PGDialect():
            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
            """
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s字段信息数据加载到mdsyncer库表mdsyncer_columns成功" % self.dbtype)
+        mdtool.log.info("%s字段信息数据加载到mdsyncer库表mdsyncer_columns成功" % self.dbtype)
 
     # 约束信息
     def tables_constraints(self):
@@ -214,22 +220,23 @@ class PGDialect():
                 tc.constraint_type,
                 kcu.column_name,
                 kcu.ordinal_position,
-                CASE 
-                    WHEN tc.constraint_type = 'FOREIGN KEY'
-                        THEN ccu.table_name
-                    ELSE NULL
-                    END referenced_table_name,
-                CASE 
-                    WHEN tc.constraint_type = 'FOREIGN KEY'
-                        THEN ccu.column_name
-                    ELSE NULL
-                    END referenced_column_name,
-                kcu.ordinal_position,
+                rc.table_name referenced_table_name,
+                rc.column_name referenced_column_name,
                 cc.check_clause
             FROM information_schema.table_constraints tc
             JOIN information_schema.key_column_usage kcu ON tc.table_name = kcu.table_name
                 AND tc.table_schema = kcu.table_schema
                 AND tc.constraint_name = kcu.constraint_name
+            LEFT JOIN (
+                SELECT rc.constraint_name,
+                    kcu.table_name,
+                    array_to_string(array_agg(kcu.column_name ORDER BY kcu.ordinal_position), ',') column_name
+                FROM information_schema.referential_constraints rc
+                JOIN information_schema.key_column_usage kcu ON rc.unique_constraint_name = kcu.constraint_name
+                    AND rc.unique_constraint_schema = kcu.constraint_schema
+                GROUP BY rc.constraint_name,
+                    kcu.table_name
+                ) rc ON rc.constraint_name = kcu.constraint_name
             LEFT JOIN information_schema.constraint_column_usage ccu ON kcu.constraint_name = ccu.constraint_name
                 AND kcu.table_name = ccu.table_name
                 AND kcu.table_schema = ccu.table_schema
@@ -260,22 +267,23 @@ class PGDialect():
                     tc.constraint_type,
                     kcu.column_name,
                     kcu.ordinal_position,
-                    CASE 
-                        WHEN tc.constraint_type = 'FOREIGN KEY'
-                            THEN ccu.table_name
-                        ELSE NULL
-                        END referenced_table_name,
-                    CASE 
-                        WHEN tc.constraint_type = 'FOREIGN KEY'
-                            THEN ccu.column_name
-                        ELSE NULL
-                        END referenced_column_name,
-                    kcu.ordinal_position,
+                    rc.table_name referenced_table_name,
+                    rc.column_name referenced_column_name,
                     cc.check_clause
                 FROM information_schema.table_constraints tc
                 JOIN information_schema.key_column_usage kcu ON tc.table_name = kcu.table_name
                     AND tc.table_schema = kcu.table_schema
                     AND tc.constraint_name = kcu.constraint_name
+                LEFT JOIN (
+                    SELECT rc.constraint_name,
+                        kcu.table_name,
+                        array_to_string(array_agg(kcu.column_name ORDER BY kcu.ordinal_position), ',') column_name
+                    FROM information_schema.referential_constraints rc
+                    JOIN information_schema.key_column_usage kcu ON rc.unique_constraint_name = kcu.constraint_name
+                        AND rc.unique_constraint_schema = kcu.constraint_schema
+                    GROUP BY rc.constraint_name,
+                        kcu.table_name
+                    ) rc ON rc.constraint_name = kcu.constraint_name
                 LEFT JOIN information_schema.constraint_column_usage ccu ON kcu.constraint_name = ccu.constraint_name
                     AND kcu.table_name = ccu.table_name
                     AND kcu.table_schema = ccu.table_schema
@@ -303,13 +311,12 @@ class PGDialect():
             ordinal_position,
             referenced_table_name,
             referenced_column_name,
-            referenced_ordinal_position,
             check_condition) 
         VALUES
-           (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+           (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
            """
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s约束信息数据加载到mdsyncer库表tables_constraints成功" % self.dbtype)
+        mdtool.log.info("%s约束信息数据加载到mdsyncer库表tables_constraints成功" % self.dbtype)
 
     # 索引信息
     def tables_indexes(self):
@@ -387,14 +394,14 @@ class PGDialect():
            (%s, %s, %s, %s, %s, %s, %s)
            """
         self.dbmgr_executor.dbexecutemany(sql, dataset)
-        tool.log.info("%s索引数据数据加载到mdsyncer库表tables_indexes成功" % self.dbtype)
+        mdtool.log.info("%s索引数据数据加载到mdsyncer库表tables_indexes成功" % self.dbtype)
 
 if __name__=='__main__':
-    dbsrc = tool.xmler('POSTGRESQL_172.21.86.201').dbCFGInfo()
-    dbmgr = tool.xmler('MGR_172.21.86.205').dbCFGInfo()
-    tables_in = 'dsr_work_order_history,global_object,gom_act_ins'
-    dialect = PGDialect(dbsrc, dbmgr, tables_in)
-    # dialect = PGDialect(dbsrc, dbmgr)
+    dbsrc = mdtool.xmler('POSTGRESQL_172.21.86.201').dbCFGInfo()
+    dbmgr = mdtool.xmler('MGR_172.21.86.205').dbCFGInfo()
+    # tables_in = 'dsr_work_order_history,global_object,gom_act_ins'
+    # dialect = PGDialect(dbsrc, dbmgr, tables_in)
+    dialect = PGDialect(dbsrc, dbmgr)
     dialect.mdsyncer_tables()
     dialect.mdsyncer_columns()
     dialect.tables_constraints()

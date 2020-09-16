@@ -5,7 +5,7 @@
 # @File    : mdsyncer.py
 
 import modelgenerator
-import tool
+import mdtool
 import argparse
 
 
@@ -20,9 +20,9 @@ def main():
                         help='按表对象导出，，以逗号为分隔符 格式：tab1,tab2,tab3')
 
     args = parser.parse_args()
-    dbsrc = tool.xmler(args.dbsrc).dbCFGInfo()
-    dbtag = tool.xmler(args.dbtag).dbCFGInfo()
-    dbmgr = tool.xmler(args.dbmgr).dbCFGInfo()
+    dbsrc = mdtool.xmler(args.dbsrc).dbCFGInfo()
+    dbtag = mdtool.xmler(args.dbtag).dbCFGInfo()
+    dbmgr = mdtool.xmler(args.dbmgr).dbCFGInfo()
     # 对象处理
     # 默认导出 表\约束\索引对象
     if args.flag is None:
@@ -37,7 +37,7 @@ def main():
 
     # 导出对象信息
     mls = modelgenerator.ModelDialect(dbsrc, dbmgr, flag, tables_in)
-    mls.main()
+    # mls.main()
 
     # 对象生成器
     mlm = modelgenerator.Modelgenerator(dbsrc, dbmgr, dbtag, tables_in)
@@ -49,7 +49,8 @@ def main():
     mlm.indexesGenerator()
 
     # 模型加载到目标库
-    mlt = modelgenerator.Modeltodb(dbtag, flag)
+    # 添加唯一性索引后可以再添加主键，故先执行索引对象
+    mlt = modelgenerator.Modeltodb(dbsrc, dbtag, flag)
     mlt.modelToDB()
 
 
@@ -59,4 +60,12 @@ def main():
 
 main()
 
-# --dbsrc ORACLE_10.45.59.246 --dbtag MYSQL_172.21.86.205 --dbmgr MGR_172.21.86.205  --tables_in BFM_AREA,BFM_BULLETIN_LEVEL
+# --dbsrc ORACLE_10.45.59.246 --dbtag MYSQL_172.21.86.205 --dbmgr MGR_172.21.86.205  --tables_in BFM_AREA,BFM_BULLETIN_LEVEL Done
+# --dbsrc ORACLE_10.45.59.246 --dbtag POSTGRESQL_172.21.86.201 --dbmgr MGR_172.21.86.205  --tables_in BFM_AREA,BFM_BULLETIN_LEVEL
+
+# --dbsrc MYSQL_172.21.86.205 --dbtag ORACLE_172.21.86.201 --dbmgr MGR_172.21.86.205  --tables_in BFM_AREA,BFM_BULLETIN_LEVEL Done
+# --dbsrc MYSQL_172.21.86.205 --dbtag POSTGRESQL_172.21.86.201 --dbmgr MGR_172.21.86.205  --tables_in BFM_AREA,BFM_BULLETIN_LEVEL
+
+# --dbsrc POSTGRESQL_172.21.86.201 --dbtag ORACLE_172.21.86.201 --dbmgr MGR_172.21.86.205  --tables_in BFM_AREA,BFM_BULLETIN_LEVEL Done
+# --dbsrc POSTGRESQL_172.21.86.201 --dbtag MYSQL_172.21.86.205 --dbmgr MGR_172.21.86.205  --tables_in BFM_AREA,BFM_BULLETIN_LEVEL
+
