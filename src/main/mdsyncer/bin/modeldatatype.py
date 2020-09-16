@@ -2,7 +2,7 @@
 # @Time    : 2020/9/15 15:12
 # @Author  : Fcvane
 # @Param   : 
-# @File    : mdtype.py
+# @File    : modeldatatype.py
 import mdtool
 
 

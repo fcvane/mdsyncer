@@ -7,7 +7,7 @@ import mdtool
 import dialects_mysql, dialects_oracle, dialects_postgresql
 import os
 import sys
-import mdtype
+import modeldatatype
 
 
 # dbsrc - 模型需要转换的数据库信息
@@ -212,11 +212,11 @@ class Modelgenerator():
                         numeric_precision = elem[6]
                         numeric_scale = elem[7]
                         column_comment = elem[8]
-                        mt = mdtype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
-                                           data_type,
-                                           character_length,
-                                           numeric_precision,
-                                           numeric_scale)
+                        mt = modeldatatype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
+                                                  data_type,
+                                                  character_length,
+                                                  numeric_precision,
+                                                  numeric_scale)
                         column_type = mt.columntransform()
                         # 字段生成器
                         array.append(column_type)
@@ -280,11 +280,11 @@ class Modelgenerator():
                         numeric_precision = elem[6]
                         numeric_scale = elem[7]
                         column_comment = elem[8]
-                        mt = mdtype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
-                                           data_type,
-                                           character_length,
-                                           numeric_precision,
-                                           numeric_scale)
+                        mt = modeldatatype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
+                                                  data_type,
+                                                  character_length,
+                                                  numeric_precision,
+                                                  numeric_scale)
                         column_type = mt.columntransform()
                         # 字段生成器
                         array.append(column_type)
@@ -366,11 +366,11 @@ class Modelgenerator():
                     numeric_precision = elem[6]
                     numeric_scale = elem[7]
                     column_comment = elem[8]
-                    mt = mdtype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
-                                       data_type,
-                                       character_length,
-                                       numeric_precision,
-                                       numeric_scale)
+                    mt = modeldatatype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
+                                              data_type,
+                                              character_length,
+                                              numeric_precision,
+                                              numeric_scale)
                     column_type = mt.columntransform()
                     # 字段生成器
                     array.append(column_type)
@@ -415,11 +415,11 @@ class Modelgenerator():
                         # 默认值特殊处理
                         if 'CHARACTER' in data_type and column_default is not None:
                             column_default = column_default.split('::')[0]
-                        mt = mdtype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
-                                           data_type,
-                                           character_length,
-                                           numeric_precision,
-                                           numeric_scale)
+                        mt = modeldatatype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
+                                                  data_type,
+                                                  character_length,
+                                                  numeric_precision,
+                                                  numeric_scale)
                         column_type = mt.columntransform()
                         # 字段生成器
                         array.append(column_type)
@@ -483,11 +483,11 @@ class Modelgenerator():
                         # 默认值特殊处理
                         if 'CHARACTER' in data_type and column_default is not None:
                             column_default = column_default.split('::')[0]
-                        mt = mdtype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
-                                           data_type,
-                                           character_length,
-                                           numeric_precision,
-                                           numeric_scale)
+                        mt = modeldatatype.mdtype(self.dbtype, self.dbtype_tag, column_name, column_default, is_nullable,
+                                                  data_type,
+                                                  character_length,
+                                                  numeric_precision,
+                                                  numeric_scale)
                         column_type = mt.columntransform()
                         # 字段生成器
                         array.append(column_type)
