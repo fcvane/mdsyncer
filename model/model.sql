@@ -1,4 +1,5 @@
 create table `tables_indexes` (
+  `auth_id` varchar(64) ,
   `db_type` varchar(64) ,
   `table_schema` varchar(64) ,
   `table_name` varchar(64) ,
@@ -11,6 +12,7 @@ create table `tables_indexes` (
 ) engine=innodb default charset=utf8 comment='数据库索引信息';
 
 create table `tables_constraints` (
+  `auth_id` varchar(64) ,
   `db_type` varchar(64) ,
   `table_schema` varchar(64) ,
   `table_name` varchar(64) ,
@@ -25,6 +27,7 @@ create table `tables_constraints` (
 ) engine=innodb default charset=utf8 comment='数据库约束信息';
 
 create table `mdsyncer_tables` (
+  `auth_id` varchar(64) ,
   `db_type` varchar(64) ,
   `table_schema` varchar(64) ,
   `table_name` varchar(64) ,
@@ -44,6 +47,7 @@ create table `mdsyncer_tables` (
 --) engine=innodb default charset=utf8;
 
 create table `mdsyncer_columns` (
+  `auth_id` varchar(64) ,
   `db_type` varchar(64) ,
   `table_schema` varchar(64) ,
   `table_name` varchar(64) ,
@@ -93,3 +97,12 @@ INSERT INTO columns_mapping(oracle_coltype,mysql_coltype,pg_coltype) VALUES ('lo
 INSERT INTO columns_mapping(oracle_coltype,mysql_coltype,pg_coltype) VALUES ('varchar','varchar','character varying');
 INSERT INTO columns_mapping(oracle_coltype,mysql_coltype,pg_coltype) VALUES ('bfile','longblob','bytea');
 
+create table `cfg_tables` (
+  `auth_id` varchar(200),
+  `table_name` varchar(64)
+) engine=innodb default charset=utf8 comment='配置的表名';
+
+create table mdsyncer_columns_tabdb as select * from mdsyncer_columns where 1=2;
+create table mdsyncer_tables_tabdb as select * from mdsyncer_tables where 1=2;
+create table tables_constraints_tabdb as select * from tables_constraints where 1=2;
+create table tables_indexes_tabdb as select * from tables_indexes where 1=2;

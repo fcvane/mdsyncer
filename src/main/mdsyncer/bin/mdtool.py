@@ -14,12 +14,22 @@ from Crypto.Cipher import AES
 
 # 公共变量
 class Variable():
-    # 脚本路径
+
+    # # 打包专用
+    # # 脚本路径
+    # main_path = ''
+    # # 打包缺失动态库专用，源码执行的话需要注释下面的一行代码
+    # FILE_PATH = os.path.abspath(os.path.realpath(main_path))
+    # # 脚本路径
+    # ROOT_PATH = os.path.split(FILE_PATH)[0]
+
     ROOT_PATH = os.path.dirname(os.getcwd())
     # 配置文件路径
     CONF_PATH = os.path.abspath(ROOT_PATH + os.sep + 'conf')
     # 数据库配置路径
     DB_PATH = os.path.abspath(CONF_PATH + os.sep + 'dbParams')
+    # JSON配置路径
+    JSON_PATH = os.path.abspath(CONF_PATH + os.sep + 'json')
     # 日志文件路径
     LOG_PATH = os.path.abspath(ROOT_PATH + os.sep + 'log')
     # 临时文件目录
@@ -28,6 +38,15 @@ class Variable():
     PLG_PATH = os.path.abspath(ROOT_PATH + os.sep + 'plugin')
     # 结果文件目录
     RST_PATH = os.path.abspath(ROOT_PATH + os.sep + 'result')
+    # JOB任务路径
+    JOB_PATH = os.path.abspath(ROOT_PATH + os.sep + 'job')
+    # datax目录
+    SRC_PATH = os.path.dirname(os.path.dirname(os.getcwd()))
+    DATAX_PATH = os.path.abspath(SRC_PATH + os.sep + 'datax')
+    # datax_bin目录
+    DATAX_BIN_PATH = os.path.abspath(DATAX_PATH + os.sep + 'bin')
+    # datax_log目录
+    DATAX_LOG_PATH = os.path.abspath(DATAX_PATH + os.sep + 'log')
 
 
 # 日志工具
@@ -42,8 +61,8 @@ class Logger(logging.Logger):
         fh = logging.FileHandler(logFile, mode='a')
         ch = logging.StreamHandler()
         # 调式
-        # ch.setLevel(logging.INFO)
-        ch.setLevel(logging.WARNING)
+        ch.setLevel(logging.INFO)
+        # ch.setLevel(logging.WARNING)
         fh.setLevel(logging.INFO)
         formatter = logging.Formatter(
             # '[ %(asctime)s ] - [ %(filename)15s ] - [ line:%(lineno)5d ] - %(levelname)5s : %(message)s', )
@@ -198,9 +217,24 @@ class DbManager():
         except Exception as err:
             log.error("数据库所有数据查询失败 " + str(err))
             return False
-            sys.exit()
+            # sys.exit()
         finally:
             self.dbclose()
+
+    # 查询所有数据_避免'cx_Oracle.LOB' object has no attribute 'translate'
+    def lbfetchall(self, sql, params=None):
+        res = self.dbconnect()
+        if not res:
+            return False
+            sys.exit()
+        # try:
+        self.cur.execute(sql, params)
+        results = self.cur.fetchall()
+        return results
+        # except Exception as err:
+        #     log.error("数据库所有数据查询失败 " + str(err))
+            # return False
+            # sys.exit()
 
     # 执行SQL
     def dbexecute(self, sql, params=None):
@@ -298,4 +332,9 @@ class xmler():
 
 
 if __name__ == '__main__':
-    print(Crypter.encrypt('abc123'))
+    # print(Crypter.encrypt('RES_CMJS_DEMO'))
+    if len(sys.argv) == 3:
+        if sys.argv[1] == '-ep':
+            print(Crypter.encrypt(sys.argv[2]))
+        elif sys.argv[1] == '-dp':
+            print(Crypter.decrypt(sys.argv[2]))

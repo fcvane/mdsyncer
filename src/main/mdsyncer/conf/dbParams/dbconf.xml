@@ -3,8 +3,7 @@
 type - 数据库类型
 host - 服务器IP
 port - 端口
-sid - oracle实例
-server_name - 服务名称
+dbname - 数据库名称\oracle实例
 username - 用户
 password - 密码
 <-->
@@ -17,15 +16,6 @@ password - 密码
         <user>pgtest</user>
         <passwd>UPscGj8PuIBzZEvuJqdiMz/u0mbrxwVQh06nTFIM3Esg0tD2B0iADAa6Zf0MGescBtPzpbVdoRolX7+Ce3+D6A==</passwd>
         <dbname>test</dbname>
-    </auth>
-
-    <auth id="ORACLE_10.45.59.246">
-        <dbtype>ORACLE</dbtype>
-        <host>10.45.59.246</host>
-        <port>9999</port>
-        <user>FICUS_LTJT</user>
-        <passwd>XcfCQBa097OQHUT9SkIsaB2zsIw9lV4QQes4HoaDlDOBeXQvpzjHrGKIyvMsr3cw0e/Pav1ODKnHOesPayhGtw==</passwd>
-        <dbname>ORCL</dbname>
     </auth>
 
     <auth id="ORACLE_172.21.86.201">
@@ -52,7 +42,7 @@ password - 密码
         <port>3306</port>
         <user>root</user>
         <passwd>UPscGj8PuIBzZEvuJqdiMz/u0mbrxwVQh06nTFIM3Esg0tD2B0iADAa6Zf0MGescBtPzpbVdoRolX7+Ce3+D6A==</passwd>
-        <dbname>dbsyncer</dbname>
+        <dbname>mdsyncer</dbname>
     </auth>
 
 </configuration>

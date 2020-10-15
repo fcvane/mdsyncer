@@ -68,6 +68,9 @@ class MysqlDialect():
                 result = self.dbsrc_executor.dbfetchall(query, params)
                 for elem in result:
                     dataset.append(elem)
+                # 表不存在写入日志
+                if len(result) == 0:
+                    mdtool.log.warning("%s表不存在于%s数据库,请检查" % (tab, self.dbtype))
         # 写入dbsyncer管理库 - mysql
         sql = """
         INSERT INTO mdsyncer_tables
@@ -348,7 +351,8 @@ class MysqlDialect():
         self.dbmgr_executor.dbexecutemany(sql, dataset)
         mdtool.log.info("%s索引数据数据加载到mdsyncer库表tables_indexes成功" % self.dbtype)
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     dbsrc = mdtool.xmler('MYSQL_172.21.86.205').dbCFGInfo()
     dbmgr = mdtool.xmler('MGR_172.21.86.205').dbCFGInfo()
     # tables_in = 'dept,dsr_work_order_history,emp'

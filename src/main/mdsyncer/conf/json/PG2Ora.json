@@ -1,0 +1,51 @@
+{
+  "job": {
+    "setting": {
+      "speed": {
+        "channel": 5
+      }
+    },
+    "content": [
+      {
+        "reader": {
+          "name": "postgresqlreader",
+          "parameter": {
+            "username": "SRCUSERNAME",
+            "password": "SRCPASSWORD",
+            "connection": [
+              {
+                "querySql": [
+                  "SRCSQL"
+                ],
+                "jdbcUrl": [
+                  "SRCJDBC"
+                ]
+              }
+            ]
+          }
+        },
+        "writer": {
+          "name": "oraclewriter",
+          "parameter": {
+            "username": "TAGUSERNAME",
+            "password": "TAGPASSWORD",
+            "column": [
+              "TAGCOL"
+            ],
+            "preSql": [
+              "TAGSQL"
+            ],
+            "connection": [
+              {
+                "jdbcUrl": "TAGJDBC",
+                "table": [
+                  "TAGTABNAME"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

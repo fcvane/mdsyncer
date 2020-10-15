@@ -32,8 +32,10 @@ class mdtype():
                                 if self.numeric_scale == 0:
                                     column_type = "`%s` integer" % self.column_name
                                 else:
-                                    column_type = "`%s` %s(%s,0)" % (
-                                        self.column_name, 'decimal', self.character_length)
+                                    # column_type = "`%s` %s(%s,0)" % (
+                                    #     self.column_name, 'decimal', self.character_length)
+                                    column_type = "`%s` %s(38,0)" % (
+                                        self.column_name, 'decimal')
                             else:
                                 if self.numeric_scale == 0:
                                     if self.numeric_precision <= 3:
@@ -42,10 +44,10 @@ class mdtype():
                                         column_type = "`%s` smallint" % self.column_name
                                     elif self.numeric_precision <= 8:
                                         column_type = "`%s` integer" % self.column_name
-                                    elif self.numeric_precision <= 22:
-                                        column_type = "`%s` decimal(%s)" % (self.column_name, self.numeric_precision)
-                                    else:
+                                    elif self.numeric_precision <= 19:
                                         column_type = "`%s` bigint" % self.column_name
+                                    else:
+                                        column_type = "`%s` decimal(%s)" % (self.column_name, self.numeric_precision)
                                 elif self.numeric_scale is None:
                                     column_type = "`%s` double" % self.column_name
                                 else:
@@ -54,7 +56,7 @@ class mdtype():
                         elif self.data_type == 'FLOAT':
                             mdtool.log.info("%s默认值为空-字段可为空-可变精度类型处理" % self.column_name)
                             column_type = "`%s` float" % self.column_name
-                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                             mdtool.log.info("%s默认值为空-字段可为空-二进制类型处理" % self.column_name)
                             column_type = "`%s` longblob" % self.column_name
                         elif self.data_type == 'CHAR' or self.data_type == 'NCHAR':
@@ -66,7 +68,7 @@ class mdtype():
                                 column_type = "`%s` text" % self.column_name
                             else:
                                 column_type = "`%s` varchar(%s)" % (self.column_name, self.character_length)
-                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                             mdtool.log.info("%s默认值为空-字段可为空-CLOB类型处理" % self.column_name)
                             column_type = "`%s` text" % self.column_name
                         elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -84,8 +86,10 @@ class mdtype():
                                 if self.numeric_scale == 0:
                                     column_type = "`%s` integer not null" % self.column_name
                                 else:
-                                    column_type = "`%s` %s(%s,0) not null" % (
-                                        self.column_name, 'decimal', self.character_length)
+                                    # column_type = "`%s` %s(%s,0) not null" % (
+                                    #     self.column_name, 'decimal', self.character_length)
+                                    column_type = "`%s` %s(38,0) not null" % (
+                                        self.column_name, 'decimal')
                             else:
                                 if self.numeric_scale == 0:
                                     if self.numeric_precision <= 3:
@@ -94,11 +98,11 @@ class mdtype():
                                         column_type = "`%s` smallint not null" % self.column_name
                                     elif self.numeric_precision <= 8:
                                         column_type = "`%s` integer not null" % self.column_name
-                                    elif self.numeric_precision <= 22:
+                                    elif self.numeric_precision <= 19:
+                                        column_type = "`%s` bigint not null" % self.column_name
+                                    else:
                                         column_type = "`%s` decimal(%s) not null" % (
                                             self.column_name, self.numeric_precision)
-                                    else:
-                                        column_type = "`%s` bigint not null" % self.column_name
                                 elif self.numeric_scale is None:
                                     column_type = "`%s` double not null" % self.column_name
                                 else:
@@ -108,7 +112,7 @@ class mdtype():
                         elif self.data_type == 'FLOAT':
                             mdtool.log.info("%s默认值为空-字段非空-可变精度类型处理" % self.column_name)
                             column_type = "`%s` float not null" % self.column_name
-                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                             mdtool.log.info("%s默认值为空-字段非空-二进制类型处理" % self.column_name)
                             column_type = "`%s` longblob not null" % self.column_name
                         elif self.data_type == 'CHAR' or self.data_type == 'NCHAR':
@@ -122,7 +126,7 @@ class mdtype():
                             else:
                                 column_type = "`%s` varchar(%s) not null" % (
                                     self.column_name, self.character_length)
-                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                             mdtool.log.info("%s默认值为空-字段非空-CLOB类型处理" % self.column_name)
                             column_type = "`%s` text not null" % self.column_name
                         elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -141,8 +145,10 @@ class mdtype():
                                 if self.numeric_scale == 0:
                                     column_type = "`%s` integer default %s" % (self.column_name, self.column_default)
                                 else:
-                                    column_type = "`%s` %s(%s,0) default %s" % (
-                                        self.column_name, 'decimal', self.character_length, self.column_default)
+                                    # column_type = "`%s` %s(%s,0) default %s" % (
+                                    #     self.column_name, 'decimal', self.character_length, self.column_default)
+                                    column_type = "`%s` %s(38,0) default %s" % (
+                                        self.column_name, 'decimal', self.column_default)
                             else:
                                 if self.numeric_scale == 0:
                                     if self.numeric_precision <= 3:
@@ -154,11 +160,11 @@ class mdtype():
                                     elif self.numeric_precision <= 8:
                                         column_type = "`%s` integer default %s" % (
                                             self.column_name, self.column_default)
-                                    elif self.numeric_precision <= 22:
+                                    elif self.numeric_precision <= 19:
+                                        column_type = "`%s` bigint default %s" % (self.column_name, self.column_default)
+                                    else:
                                         column_type = "`%s` decimal(%s) default %s" % (
                                             self.column_name, self.numeric_precision, self.column_default)
-                                    else:
-                                        column_type = "`%s` bigint default %s" % (self.column_name, self.column_default)
                                 elif self.numeric_scale is None:
                                     column_type = "`%s` double default %s" % (self.column_name, self.column_default)
                                 else:
@@ -168,7 +174,7 @@ class mdtype():
                         elif self.data_type == 'FLOAT':
                             mdtool.log.info("%s默认值非空-字段可为空-可变精度类型处理" % self.column_name)
                             column_type = "%s double precision default %s" % (self.column_name, self.column_default)
-                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                             mdtool.log.info("%s默认值非空-字段可为空-二进制类型处理" % self.column_name)
                             column_type = "`%s` longblob default %s" % (self.column_name, self.column_default)
                         elif self.data_type == 'CHAR' or self.data_type == 'NCHAR':
@@ -182,7 +188,7 @@ class mdtype():
                             else:
                                 column_type = "`%s` varchar(%s) default %s" % (
                                     self.column_name, self.character_length, self.column_default)
-                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                             mdtool.log.info("%s默认值非空-字段可为空-CLOB类型处理" % self.column_name)
                             column_type = "`%s` text default %s" % (self.column_name, self.column_default)
                         elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -202,8 +208,10 @@ class mdtype():
                                         column_type = "`%s` integer default %s" % (
                                             self.column_name, self.column_default)
                                     else:
-                                        column_type = "`%s` %s(%s,0) default %s" % (
-                                            self.column_name, 'decimal', self.character_length, self.column_default)
+                                        # column_type = "`%s` %s(%s,0) default %s" % (
+                                        #     self.column_name, 'decimal', self.character_length, self.column_default)
+                                        column_type = "`%s` %s(38,0) default %s" % (
+                                            self.column_name, 'decimal', self.column_default)
                                 else:
                                     if self.numeric_scale == 0:
                                         if self.numeric_precision <= 3:
@@ -215,12 +223,12 @@ class mdtype():
                                         elif self.numeric_precision <= 8:
                                             column_type = "`%s` integer default %s" % (
                                                 self.column_name, self.column_default)
-                                        elif self.numeric_precision <= 22:
-                                            column_type = "`%s` decimal(%s) default %s" % (
-                                                self.column_name, self.numeric_precision, self.column_default)
-                                        else:
+                                        elif self.numeric_precision <= 19:
                                             column_type = "`%s` bigint default %s" % (
                                                 self.column_name, self.column_default)
+                                        else:
+                                            column_type = "`%s` decimal(%s) default %s" % (
+                                                self.column_name, self.numeric_precision, self.column_default)
                                     elif self.numeric_scale is None:
                                         column_type = "`%s` double default %s" % (self.column_name, self.column_default)
                                     else:
@@ -230,7 +238,7 @@ class mdtype():
                             elif self.data_type == 'FLOAT':
                                 mdtool.log.info("%s默认值非空-默认值结果为null-可变精度类型处理" % self.column_name)
                                 column_type = "`%s` float default %s" % (self.column_name, self.column_default)
-                            elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                            elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                                 mdtool.log.info("%s默认值非空-默认值结果为null-字段非空-二进制类型处理" % self.column_name)
                                 column_type = "`%s` longblob default %s" % (self.column_name, self.column_default)
                             elif self.data_type == 'CHAR' or self.data_type == 'NCHAR':
@@ -244,7 +252,7 @@ class mdtype():
                                 else:
                                     column_type = "`%s` varchar(%s) default %s" % (
                                         self.column_name, self.character_length, self.column_default)
-                            elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                            elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                                 mdtool.log.info("%s默认值非空-默认值结果为null-字段非空-CLOB类型处理" % self.column_name)
                                 column_type = "`%s` text default %s" % (self.column_name, self.column_default)
                             elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -263,8 +271,10 @@ class mdtype():
                                         column_type = "`%s` integer default %s not null" % (
                                             self.column_name, self.column_default)
                                     else:
-                                        column_type = "`%s` %s(%s,0) default %s not null" % (
-                                            self.column_name, 'decimal', self.character_length, self.column_default)
+                                        # column_type = "`%s` %s(%s,0) default %s not null" % (
+                                        #     self.column_name, 'decimal', self.character_length, self.column_default)
+                                        column_type = "`%s` %s(38,0) default %s not null" % (
+                                            self.column_name, 'decimal', self.column_default)
                                 else:
                                     if self.numeric_scale == 0:
                                         if self.numeric_precision <= 3:
@@ -276,12 +286,12 @@ class mdtype():
                                         elif self.numeric_precision <= 8:
                                             column_type = "`%s` integer default %s not null" % (
                                                 self.column_name, self.column_default)
-                                        elif self.numeric_precision <= 22:
-                                            column_type = "`%s` decimal(%s) default %s not null" % (
-                                                self.column_name, self.numeric_precision, self.column_default)
-                                        else:
+                                        elif self.numeric_precision <= 19:
                                             column_type = "`%s` bigint default %s not null" % (
                                                 self.column_name, self.column_default)
+                                        else:
+                                            column_type = "`%s` decimal(%s) default %s not null" % (
+                                                self.column_name, self.numeric_precision, self.column_default)
                                     elif self.numeric_scale is None:
                                         column_type = "`%s` double default %s not null" % (
                                             self.column_name, self.column_default)
@@ -292,7 +302,7 @@ class mdtype():
                             elif self.data_type == 'FLOAT':
                                 mdtool.log.info("%s默认值非空-字段非空-可变精度类型处理" % self.column_name)
                                 column_type = "`%s` float default %s not null" % (self.column_name, self.column_default)
-                            elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                            elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                                 mdtool.log.info("%s默认值非空-字段非空-二进制类型处理" % self.column_name)
                                 column_type = "`%s` longblob default %s not null" % (
                                     self.column_name, self.column_default)
@@ -308,7 +318,7 @@ class mdtype():
                                 else:
                                     column_type = "`%s` varchar(%s) default %s not null" % (
                                         self.column_name, self.character_length, self.column_default)
-                            elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                            elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                                 mdtool.log.info("%s默认值非空-字段非空-CLOB类型处理" % self.column_name)
                                 column_type = "`%s` text default %s not null" % (self.column_name, self.column_default)
                             elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -337,10 +347,10 @@ class mdtype():
                                         column_type = "%s smallint" % self.column_name
                                     elif self.numeric_precision <= 8:
                                         column_type = "%s integer" % self.column_name
-                                    elif self.numeric_precision <= 22:
-                                        column_type = "%s numeric(%s)" % (self.column_name, self.numeric_precision)
-                                    else:
+                                    elif self.numeric_precision <= 19:
                                         column_type = "%s bigint" % self.column_name
+                                    else:
+                                        column_type = "%s numeric(%s)" % (self.column_name, self.numeric_precision)
                                 elif self.numeric_scale is None:
                                     column_type = "%s double precision" % self.column_name
                                 else:
@@ -349,7 +359,7 @@ class mdtype():
                         elif self.data_type == 'FLOAT':
                             mdtool.log.info("%s默认值为空-字段可为空-可变精度类型处理" % self.column_name)
                             column_type = "%s double precision" % self.column_name
-                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                             mdtool.log.info("%s默认值为空-字段可为空-二进制类型处理" % self.column_name)
                             column_type = "%s bytea" % self.column_name
                         elif self.data_type == 'CHAR' or self.data_type == 'NCHAR':
@@ -361,7 +371,7 @@ class mdtype():
                                 column_type = "%s text" % self.column_name
                             else:
                                 column_type = "%s character varying(%s)" % (self.column_name, self.character_length)
-                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                             mdtool.log.info("%s默认值为空-字段可为空-CLOB类型处理" % self.column_name)
                             column_type = "%s text" % self.column_name
                         elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -387,11 +397,11 @@ class mdtype():
                                         column_type = "%s smallint not null" % self.column_name
                                     elif self.numeric_precision <= 8:
                                         column_type = "%s integer not null" % self.column_name
-                                    elif self.numeric_precision <= 22:
+                                    elif self.numeric_precision <= 19:
+                                        column_type = "%s bigint not null" % self.column_name
+                                    else:
                                         column_type = "%s numeric(%s) not null" % (
                                             self.column_name, self.numeric_precision)
-                                    else:
-                                        column_type = "%s bigint not null" % self.column_name
                                 elif self.numeric_scale is None:
                                     column_type = "%s double precision not null" % self.column_name
                                 else:
@@ -401,7 +411,7 @@ class mdtype():
                         elif self.data_type == 'FLOAT':
                             mdtool.log.info("%s默认值为空-字段非空-可变精度类型处理" % self.column_name)
                             column_type = "%s double precision not null" % self.column_name
-                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                             mdtool.log.info("%s默认值为空-字段非空-二进制类型处理" % self.column_name)
                             column_type = "%s bytea not null" % self.column_name
                         elif self.data_type == 'CHAR' or self.data_type == 'NCHAR':
@@ -415,7 +425,7 @@ class mdtype():
                             else:
                                 column_type = "%s character varying(%s) not null" % (
                                     self.column_name, self.character_length)
-                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                             mdtool.log.info("%s默认值为空-字段非空-CLOB类型处理" % self.column_name)
                             column_type = "%s text not null" % self.column_name
                         elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -442,11 +452,11 @@ class mdtype():
                                         column_type = "%s smallint default %s" % (self.column_name, self.column_default)
                                     elif self.numeric_precision <= 8:
                                         column_type = "%s integer default %s" % (self.column_name, self.column_default)
-                                    elif self.numeric_precision <= 22:
+                                    elif self.numeric_precision <= 19:
+                                        column_type = "%s bigint default %s" % (self.column_name, self.column_default)
+                                    else:
                                         column_type = "%s numeric(%s) default %s" % (
                                             self.column_name, self.numeric_precision, self.column_default)
-                                    else:
-                                        column_type = "%s bigint default %s" % (self.column_name, self.column_default)
                                 elif self.numeric_scale is None:
                                     column_type = "%s double precision default %s" % (
                                         self.column_name, self.column_default)
@@ -457,7 +467,7 @@ class mdtype():
                         elif self.data_type == 'FLOAT':
                             mdtool.log.info("%s默认值非空-字段可为空-可变精度类型处理" % self.column_name)
                             column_type = "%s double precision default %s" % (self.column_name, self.column_default)
-                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                        elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                             mdtool.log.info("%s默认值非空-字段可为空-二进制类型处理" % self.column_name)
                             column_type = "%s bytea default %s" % (self.column_name, self.column_default)
                         elif self.data_type == 'CHAR' or self.data_type == 'NCHAR':
@@ -471,7 +481,7 @@ class mdtype():
                             else:
                                 column_type = "%s character varying(%s) default %s" % (
                                     self.column_name, self.character_length, self.column_default)
-                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                        elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                             mdtool.log.info("%s默认值非空-字段可为空-CLOB类型处理" % self.column_name)
                             column_type = "%s text default %s" % (self.column_name, self.column_default)
                         elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -500,12 +510,12 @@ class mdtype():
                                         elif self.numeric_precision <= 8:
                                             column_type = "%s integer default %s" % (
                                                 self.column_name, self.column_default)
-                                        elif self.numeric_precision <= 22:
-                                            column_type = "%s numeric(%s) default %s" % (
-                                                self.column_name, self.numeric_precision, self.column_default)
-                                        else:
+                                        elif self.numeric_precision <= 19:
                                             column_type = "%s bigint default %s" % (
                                                 self.column_name, self.column_default)
+                                        else:
+                                            column_type = "%s numeric(%s) default %s" % (
+                                                self.column_name, self.numeric_precision, self.column_default)
                                     elif self.numeric_scale is None:
                                         column_type = "%s double precision default %s" % (
                                             self.column_name, self.column_default)
@@ -516,7 +526,7 @@ class mdtype():
                             elif self.data_type == 'FLOAT':
                                 mdtool.log.info("%s默认值非空-默认值结果为null-可变精度类型处理" % self.column_name)
                                 column_type = "%s double precision default %s" % (self.column_name, self.column_default)
-                            elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                            elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                                 mdtool.log.info("%s默认值非空-默认值结果为null-字段非空-二进制类型处理" % self.column_name)
                                 column_type = "%s bytea default %s" % (self.column_name, self.column_default)
                             elif self.data_type == 'CHAR' or self.data_type == 'NCHAR':
@@ -530,7 +540,7 @@ class mdtype():
                                 else:
                                     column_type = "%s character varying(%s) default %s" % (
                                         self.column_name, self.character_length, self.column_default)
-                            elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                            elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                                 mdtool.log.info("%s默认值非空-默认值结果为null-字段非空-CLOB类型处理" % self.column_name)
                                 column_type = "%s text default %s" % (self.column_name, self.column_default)
                             elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -559,12 +569,12 @@ class mdtype():
                                         elif self.numeric_precision <= 8:
                                             column_type = "%s integer default %s not null" % (
                                                 self.column_name, self.column_default)
-                                        elif self.numeric_precision <= 22:
-                                            column_type = "%s numeric(%s) default %s not null" % (
-                                                self.column_name, self.numeric_precision, self.column_default)
-                                        else:
+                                        elif self.numeric_precision <= 19:
                                             column_type = "%s bigint default %s not null" % (
                                                 self.column_name, self.column_default)
+                                        else:
+                                            column_type = "%s numeric(%s) default %s not null" % (
+                                                self.column_name, self.numeric_precision, self.column_default)
                                     elif self.numeric_scale is None:
                                         column_type = "%s double precision default %s not null" % (
                                             self.column_name, self.column_default)
@@ -576,7 +586,7 @@ class mdtype():
                                 mdtool.log.info("%s默认值非空-字段非空-可变精度类型处理" % self.column_name)
                                 column_type = "%s double precision default %s not null" % (
                                     self.column_name, self.column_default)
-                            elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'BFILE':
+                            elif self.data_type == 'BLOB' or self.data_type == 'RAW' or self.data_type == 'LONG RAW' or self.data_type == 'BFILE':
                                 mdtool.log.info("%s默认值非空-字段非空-二进制类型处理" % self.column_name)
                                 column_type = "%s bytea default %s not null" % (self.column_name, self.column_default)
                             elif self.data_type == 'CHAR' or self.data_type == 'NCHAR':
@@ -591,7 +601,7 @@ class mdtype():
                                 else:
                                     column_type = "%s character varying(%s) default %s not null" % (
                                         self.column_name, self.character_length, self.column_default)
-                            elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID':
+                            elif self.data_type == 'CLOB' or self.data_type == 'NCLOB' or self.data_type == 'LONG' or self.data_type == 'UROWID' or self.data_type == 'ROWID':
                                 mdtool.log.info("%s默认值非空-字段非空-CLOB类型处理" % self.column_name)
                                 column_type = "%s text default %s not null" % (self.column_name, self.column_default)
                             elif self.data_type == 'DATE' or self.data_type == 'TIMESTAMP(6)':
@@ -1283,16 +1293,16 @@ class mdtype():
                                         self.column_default)
                             elif self.data_type == 'INTEGER':
                                 column_type = "%s number(10) default %s not null" % (
-                                self.column_name, self.column_default)
+                                    self.column_name, self.column_default)
                             elif self.data_type == 'SMALLINT':
                                 column_type = "%s number(5) default %s not null" % (
-                                self.column_name, self.column_default)
+                                    self.column_name, self.column_default)
                             elif self.data_type == 'BIGINT':
                                 mdtool.log.info("%s默认值非空-字段非空-整数类型处理" % self.column_name)
                                 if self.numeric_precision > 22:
                                     mdtool.log.warning("%s默认值非空-字段非空-整数类型处理-数值精度高于22，请检查" % self.column_name)
                                     column_type = "%s number(22) default %s not null" % (
-                                    self.column_name, self.column_default)
+                                        self.column_name, self.column_default)
                                 else:
                                     column_type = "%s number(%s) default %s not null" % (
                                         self.column_name, self.numeric_precision, self.column_default)

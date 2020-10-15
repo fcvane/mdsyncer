@@ -4,25 +4,24 @@
 # @Param   : 
 # @File    : modelgenerator.py
 import mdtool
-# 跨目录访问
 # import sys
 # sys.path.append('..')
-import dialects_mysql, dialects_oracle, dialects_postgresql
+import dialects_mysql_tabdb, dialects_oracle_tabdb, dialects_postgresql_tabdb
 import os
 import sys
 import modeldatatype
 
 
+# 为了避免配置文件表过多，多次遍历造成查询缓慢，故采用配置文件入库，通过表关联进行处理
 # dbsrc - 模型需要转换的数据库信息
 # dbmgr - dbsyncer工具管理数据库信息
 # flag - 表对象、约束、索引等可选，以逗号为分隔符  格式：table,constraint,index
 # dbtag - 模型转换后的数据库信息
 
 class ModelDialect():
-    def __init__(self, dbsrc, dbmgr, flag=None, tables_in=None):
+    def __init__(self, dbsrc, dbmgr, flag=None):
         self.dbsrc = dbsrc
         self.dbmgr = dbmgr
-        self.tables_in = tables_in
         self.flag = flag
         for value in dbsrc.values():
             self.dbtype = value['dbtype'].lower()
@@ -31,7 +30,7 @@ class ModelDialect():
         if 'table' in self.flag or 'constraint' in self.flag or 'index' in self.flag:
             result = self.flag.split(',')
             if self.dbtype == 'oracle':
-                dialects = dialects_oracle.OracleDialect(self.dbsrc, self.dbmgr, self.tables_in)
+                dialects = dialects_oracle_tabdb.OracleDialect(self.dbsrc, self.dbmgr)
                 for elem in result:
                     if elem == 'table':
                         dialects.mdsyncer_tables()
@@ -43,7 +42,7 @@ class ModelDialect():
                     else:
                         mdtool.log.error("数据库对象参数错误，请重新处理")
             elif self.dbtype == 'mysql':
-                dialects = dialects_mysql.MysqlDialect(self.dbsrc, self.dbmgr, self.tables_in)
+                dialects = dialects_mysql_tabdb.MysqlDialect(self.dbsrc, self.dbmgr)
                 for elem in result:
                     if elem == 'table':
                         dialects.mdsyncer_tables()
@@ -55,7 +54,7 @@ class ModelDialect():
                     else:
                         mdtool.log.error("数据库对象参数错误，请重新处理")
             elif self.dbtype == 'postgresql':
-                dialects = dialects_postgresql.PGDialect(self.dbsrc, self.dbmgr, self.tables_in)
+                dialects = dialects_postgresql_tabdb.PGDialect(self.dbsrc, self.dbmgr)
                 for elem in result:
                     if elem == 'table':
                         dialects.mdsyncer_tables()
@@ -72,16 +71,24 @@ class ModelDialect():
 
 # 模型生成器
 class Modelgenerator():
-    def __init__(self, dbsrc, dbmgr, dbtag, tables_in=None):
+    def __init__(self, dbsrc, dbmgr, dbtag):
         self.dbsrc = dbsrc
         self.dbmgr = dbmgr
         self.dbtag = dbtag
-        self.tables_in = tables_in
+        # keys
+        for key in dbsrc.keys():
+            self.keys = key
         # 源
         for value in dbsrc.values():
+            self.host = value['host']
+            self.port = value['port']
+            self.user = value['user']
+            self.passwd = value['passwd']
             self.dbtype = value['dbtype'].lower()
             self.dbname = value['dbname'].lower()
-            self.user = value['user']
+        # 源库
+        self.dbsrc_executor = mdtool.DbManager(self.host, self.port, self.user, self.passwd,
+                                               self.dbname, self.dbtype)
 
         # 目标
         for value in dbtag.values():
@@ -91,7 +98,7 @@ class Modelgenerator():
             self.passwd_tag = value['passwd']
             self.dbname_tag = value['dbname']
             self.dbtype_tag = value['dbtype'].lower()
-
+        # 目标库
         self.dbtag_executor = mdtool.DbManager(self.host_tag, self.port_tag, self.user_tag, self.passwd_tag,
                                                self.dbname_tag, self.dbtype_tag)
         # values
@@ -142,61 +149,60 @@ class Modelgenerator():
                 file.truncate(0)
             file.close()
 
+    # 删除不需要同步的对象
+    def DelObject(self):
+        tables = "mdsyncer_tables_tabdb,mdsyncer_columns_tabdb,tables_constraints_tabdb,tables_indexes_tabdb"
+        for table in tables.split(','):
+            query = "DELETE mt FROM %s mt " \
+                    "LEFT JOIN cfg_tables ct " \
+                    "ON mt.auth_id = ct.auth_id " \
+                    "AND lower(mt.table_name) = ct.table_name " \
+                    "WHERE ct.table_name is null AND mt.auth_id = '%s'" % (
+                        table, self.keys)
+            self.dbmgr_executor.sql_execute(query)
+
     # 表对象生成
     def tablesGenerator(self):
-        if self.tables_in is None:
-            if self.dbtype == 'oracle':
-                params = (self.dbtype, self.user)
-            elif self.dbtype == 'mysql' or self.dbtype == 'postgresql':
-                params = (self.dbtype, self.dbname)
-            query = """
-                SELECT 
-                    lower(table_name) table_name
-                FROM mdsyncer_tables
-                WHERE db_type = %s
-                AND table_schema = %s
-                ORDER BY table_name
-                """
-        else:
-            if self.dbtype == 'oracle':
-                params = (self.dbtype, tuple(self.tables_in.split(',')), self.user)
-            elif self.dbtype == 'mysql' or self.dbtype == 'postgresql':
-                params = (self.dbtype, tuple(self.tables_in.split(',')), self.dbname)
-            # 根据表名遍历
-            query = """
-                SELECT 
-                    table_name 
-                FROM mdsyncer_tables
-                WHERE db_type = %s
-                AND lower(table_name) in %s
-                AND table_schema = %s
-                ORDER BY table_name
-                """
+        if self.dbtype == 'oracle':
+            params = (self.dbtype, self.user, self.keys)
+        elif self.dbtype == 'mysql' or self.dbtype == 'postgresql':
+            params = (self.dbtype, self.dbname, self.keys)
+        query = """
+        SELECT 
+            lower(table_name) table_name
+        FROM mdsyncer_tables_tabdb mt
+        WHERE db_type = %s
+        AND table_schema = %s
+        AND auth_id = %s 
+        ORDER BY table_name
+        """
         tabnames = self.dbmgr_executor.dbfetchall(query, params)
         dataset = []
         # dataset_tab = []
         for tabname in tabnames:
             query = """
-                SELECT 
-                    dbt.table_comment,
-                    dbc.column_name,
-                    dbc.column_default,
-                    dbc.is_nullable,
-                    dbc.data_type,
-                    dbc.character_length,
-                    dbc.numeric_precision,
-                    dbc.numeric_scale,
-                    dbc.column_comment
-                FROM mdsyncer_tables dbt,
-                    mdsyncer_columns dbc
-                WHERE dbt.db_type = dbc.db_type
-                    AND dbt.table_schema = dbc.table_schema
-                    AND dbt.table_name = dbc.table_name
-                    AND dbt.db_type = %s
-                    AND dbt.table_name = %s
-                ORDER BY dbc.ordinal_position   
-                """
-            result = self.dbmgr_executor.dbfetchall(query, (self.dbtype, tabname[0]))
+            SELECT 
+                dbt.table_comment,
+                dbc.column_name,
+                dbc.column_default,
+                dbc.is_nullable,
+                dbc.data_type,
+                dbc.character_length,
+                dbc.numeric_precision,
+                dbc.numeric_scale,
+                dbc.column_comment
+            FROM mdsyncer_tables_tabdb dbt,
+                mdsyncer_columns_tabdb dbc
+            WHERE dbt.db_type = dbc.db_type
+                AND dbt.auth_id = dbc.auth_id
+                AND dbt.table_schema = dbc.table_schema
+                AND dbt.table_name = dbc.table_name
+                AND dbt.db_type = %s
+                AND dbt.table_name = %s
+                AND dbt.auth_id = %s
+            ORDER BY dbc.ordinal_position   
+            """
+            result = self.dbmgr_executor.dbfetchall(query, (self.dbtype, tabname[0], self.keys))
             # 异构数据类型转换
             array = []
             colcomm = []
@@ -246,7 +252,7 @@ class Modelgenerator():
                     f.close()
                     # 初始化
                     dataset = []
-                    # dataset_tab = []
+                    dataset_tab = []
                     mdtool.log.info(
                         "%s2%s----------------------------%s表模型成功构建----------------------------" % (
                             self.dbtype, self.dbtype_tag, tabname[0]))
@@ -293,7 +299,7 @@ class Modelgenerator():
                         column_type = mt.columntransform()
                         # 字段生成器
                         array.append(column_type)
-                    # 注释为空的不处理
+                        # 注释为空的不处理
                     if column_comment is None:
                         pass
                     else:
@@ -457,7 +463,7 @@ class Modelgenerator():
                     f.close()
                     # 初始化
                     dataset = []
-                    dataset_tab = []
+                    # dataset_tab = []
                     mdtool.log.info(
                         "%s2%s----------------------------%s表模型成功构建----------------------------" % (
                             self.dbtype, self.dbtype_tag, tabname[0]))
@@ -534,217 +540,153 @@ class Modelgenerator():
     # 约束生成
     def constraintsGenerator(self):
         if self.dbtype == 'oracle' or self.dbtype == 'postgresql':
-            if self.tables_in is None:
-                params = (self.dbtype,)
-                query = """
-                        SELECT 
-                            table_name, 
-                            constraint_type,
-                            constraint_name,
-                            group_concat(column_name ORDER BY ordinal_position),
-                            referenced_table_name,
-                            referenced_column_name,
-                            check_condition
-                        FROM tables_constraints
-                        WHERE db_type = %s
-                        GROUP BY table_name,
-                            constraint_type,
-                            constraint_name,
-                            referenced_table_name,
-                            referenced_column_name,
-                            check_condition
-                        """
-            else:
-                params = (self.dbtype, tuple(self.tables_in.split(',')))
-                query = """
-                        SELECT 
-                            table_name,
-                            constraint_type,
-                            constraint_name,
-                            group_concat(column_name ORDER BY ordinal_position),
-                            referenced_table_name,
-                            referenced_column_name,
-                            check_condition
-                        FROM tables_constraints
-                        WHERE db_type = %s
-                        AND lower(table_name) in %s
-                        GROUP BY table_name,
-                            constraint_type,
-                            constraint_name,
-                            referenced_table_name,
-                            referenced_column_name,
-                            check_condition
-                        """
+            params = (self.dbtype, self.keys)
+            query = """
+                SELECT 
+                    table_name, 
+                    constraint_type,
+                    constraint_name,
+                    group_concat(column_name ORDER BY ordinal_position),
+                    referenced_table_name,
+                    referenced_column_name,
+                    check_condition
+                FROM tables_constraints_tabdb
+                WHERE db_type = %s
+                AND auth_id = %s
+                GROUP BY table_name,
+                    constraint_type,
+                    constraint_name,
+                    referenced_table_name,
+                    referenced_column_name,
+                    check_condition
+            """
             result = self.dbmgr_executor.dbfetchall(query, params)
         elif self.dbtype == 'mysql':
-            if self.tables_in is None:
-                params = (self.dbtype,)
-                query = """
-                        SELECT 
-                            table_name,
+            params = (self.dbtype, self.keys)
+            query = """
+                SELECT 
+                    table_name,
+                    constraint_type,
+                    CASE WHEN constraint_name='PRIMARY' 
+                        THEN CONCAT('pk_',table_name)  
+                    ELSE constraint_name END constraint_name,
+                    group_concat(column_name ORDER BY ordinal_position),
+                    referenced_table_name,
+                    group_concat(referenced_column_name ORDER BY referenced_ordinal_position),
+                    check_condition
+                FROM tables_constraints_tabdb
+                WHERE db_type = %s
+                AND auth_id = %s
+                GROUP BY table_name,
+                    constraint_type,
+                    constraint_name,
+                    referenced_table_name,
+                    check_condition
+                """
+            result = self.dbmgr_executor.dbfetchall(query, params)
+        dataset = []
+        # 外键最后执行处理
+        dataset_fk = []
+        for elem in result:
+            constraint_sql = ''
+            table_name = elem[0]
+            constraint_type = elem[1]
+            constraint_name = elem[2]
+            column_name = elem[3]
+            referenced_table_name = elem[4]
+            referenced_column_name = elem[5]
+            check_condition = elem[6]
+            mdtool.log.info(
+                "%s2%s----------------------------%s表_%s约束模型开始构建----------------------------" % (
+                    self.dbtype, self.dbtype_tag, table_name, constraint_name))
+            if constraint_type == 'PRIMARY KEY':
+                mdtool.log.info("%s主键约束构建" % constraint_name)
+                constraint_sql = "ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY(%s)" % (
+                    table_name, constraint_name, column_name)
+            elif constraint_type == 'FOREIGN KEY':
+                mdtool.log.info("%s外键约束构建" % constraint_name)
+                constraint_sql_fk = "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)" % (
+                    table_name, constraint_name, column_name, referenced_table_name, referenced_column_name)
+                dataset_fk.append(constraint_sql_fk)
+            elif constraint_type == 'CHECK':
+                mdtool.log.info("%s检查约束构建" % constraint_name)
+                constraint_sql = "ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s)" % (
+                    table_name, constraint_name, check_condition)
+            # oracle主键会产生唯一性约束
+            elif constraint_type == 'UNIQUE':
+                if self.dbtag == 'oracle':
+                    query = """
+                    SELECT COUNT(1)
+                    FROM (
+                        SELECT table_name,
                             constraint_type,
-                            CASE WHEN constraint_name='PRIMARY' 
-                                THEN CONCAT('pk_',table_name)  
-                            ELSE constraint_name END constraint_name,
-                            group_concat(column_name ORDER BY ordinal_position),
-                            referenced_table_name,
-                            group_concat(referenced_column_name ORDER BY referenced_ordinal_position),
-                            check_condition
-                        FROM tables_constraints
+                            group_concat(column_name ORDER BY ordinal_position) column_name
+                        FROM tables_constraints_tabdb
                         WHERE db_type = %s
                         GROUP BY table_name,
-                            constraint_type,
-                            constraint_name,
-                            referenced_table_name,
-                            check_condition
-                        """
-                result = self.dbmgr_executor.dbfetchall(query, params)
-            else:
-                params = (self.dbtype, tuple(self.tables_in.split(',')))
-                query = """
-                        SELECT 
-                            table_name,
-                            constraint_type,
-                            CASE WHEN constraint_name='PRIMARY' 
-                                THEN CONCAT('pk_',table_name)  
-                            ELSE constraint_name END constraint_name,
-                            group_concat(column_name ORDER BY ordinal_position),
-                            referenced_table_name,
-                            group_concat(referenced_column_name ORDER BY referenced_ordinal_position),
-                            check_condition
-                        FROM tables_constraints
-                        WHERE db_type = %s
-                        AND lower(table_name) in %s
-                        GROUP BY table_name,
-                            constraint_type,
-                            constraint_name,
-                            referenced_table_name,
-                            check_condition
-                        """
-                result = self.dbmgr_executor.dbfetchall(query, params)
-            dataset = []
-            # 外键最后执行处理
-            dataset_fk = []
-            for elem in result:
-                constraint_sql = ''
-                # constraint_sql_fk = ''
-                table_name = elem[0]
-                constraint_type = elem[1]
-                constraint_name = elem[2]
-                column_name = elem[3]
-                referenced_table_name = elem[4]
-                referenced_column_name = elem[5]
-                check_condition = elem[6]
-                mdtool.log.info(
-                    "%s2%s----------------------------%s表_%s约束模型开始构建----------------------------" % (
-                        self.dbtype, self.dbtype_tag, table_name, constraint_name))
-                if constraint_type == 'PRIMARY KEY':
-                    mdtool.log.info("%s主键约束构建" % constraint_name)
-                    constraint_sql = "ALTER TABLE %s ADD CONSTRAINT %s PRIMARY KEY(%s)" % (
-                        table_name, constraint_name, column_name)
-                elif constraint_type == 'FOREIGN KEY':
-                    mdtool.log.info("%s外键约束构建" % constraint_name)
-                    constraint_sql_fk = "ALTER TABLE %s ADD CONSTRAINT %s FOREIGN KEY (%s) REFERENCES %s(%s)" % (
-                        table_name, constraint_name, column_name, referenced_table_name, referenced_column_name)
-                    dataset_fk.append(constraint_sql_fk)
-                elif constraint_type == 'CHECK':
-                    mdtool.log.info("%s检查约束构建" % constraint_name)
-                    constraint_sql = "ALTER TABLE %s ADD CONSTRAINT %s CHECK (%s)" % (
-                        table_name, constraint_name, check_condition)
-                # oracle主键会产生唯一性约束
-                elif constraint_type == 'UNIQUE':
-                    if self.dbtag == 'oracle':
-                        query = """
-                        SELECT COUNT(1)
-                        FROM (
-                            SELECT table_name,
-                                constraint_type,
-                                group_concat(column_name ORDER BY ordinal_position) column_name
-                            FROM tables_constraints
-                            WHERE db_type = %s
-                            GROUP BY table_name,
-                                constraint_type
-                            ) t
-                        WHERE table_name = %s
-                            AND column_name = %s
-                            AND constraint_type = 'PRIMARY KEY'
-                        """
-                        result_up = self.dbmgr_executor.dbfetchone(query, (self.dbtype, table_name, column_name))
-                        if result_up[0] > 0:
-                            pass
-                        else:
-                            mdtool.log.info("%s唯一性约束构建" % constraint_name)
-                            constraint_sql = "ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s)" % (
-                                table_name, constraint_name, column_name)
-                    elif self.dbtag == 'mysql' or self.dbtag == 'postgresql':
+                            constraint_type
+                        ) t
+                    WHERE table_name = %s
+                        AND column_name = %s
+                        AND constraint_type = 'PRIMARY KEY'
+                    """
+                    result_up = self.dbmgr_executor.dbfetchone(query, (self.dbtype, table_name, column_name))
+                    if result_up[0] > 0:
+                        pass
+                    else:
                         mdtool.log.info("%s唯一性约束构建" % constraint_name)
                         constraint_sql = "ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s)" % (
                             table_name, constraint_name, column_name)
-                else:
-                    mdtool.log.error("%s_%s_%s约束类型错误" % (self.dbtype, table_name, constraint_name))
-                    sys.exit()
-                mdtool.log.info(
-                    "%s2%s----------------------------%s表_%s约束模型成功构建----------------------------" % (
-                        self.dbtype, self.dbtype_tag, table_name, constraint_name))
-                dataset.append(constraint_sql)
-            # 剔除空元素
-            while '' in dataset:
-                dataset.remove('')
-            while '' in dataset_fk:
-                dataset_fk.remove('')
-            with open(self.filedir_cst + os.sep + '%s2%s_constraint_model.sql' % (self.dbtype, self.dbtype_tag),
+                elif self.dbtag == 'mysql' or self.dbtag == 'postgresql':
+                    mdtool.log.info("%s唯一性约束构建" % constraint_name)
+                    constraint_sql = "ALTER TABLE %s ADD CONSTRAINT %s UNIQUE (%s)" % (
+                        table_name, constraint_name, column_name)
+            else:
+                mdtool.log.error("%s_%s_%s约束类型错误" % (self.dbtype, table_name, constraint_name))
+                sys.exit()
+            mdtool.log.info(
+                "%s2%s----------------------------%s表_%s约束模型成功构建----------------------------" % (
+                    self.dbtype, self.dbtype_tag, table_name, constraint_name))
+            dataset.append(constraint_sql)
+            # constraint_sql = ""
+        # 剔除空元素
+        while '' in dataset:
+            dataset.remove('')
+        while '' in dataset_fk:
+            dataset_fk.remove('')
+        with open(self.filedir_cst + os.sep + '%s2%s_constraint_model.sql' % (self.dbtype, self.dbtype_tag), 'a') as f:
+            f.write(';'.join(dataset))
+        f.close()
+        if len(dataset_fk) > 0:
+            with open(self.filedir_cst + os.sep + '%s2%s_constraint_fk_model.sql' % (self.dbtype, self.dbtype_tag),
                       'a') as f:
-                f.write(';'.join(dataset))
+                f.write(';'.join(dataset_fk))
             f.close()
-            if len(dataset_fk) > 0:
-                with open(self.filedir_cst + os.sep + '%s2%s_constraint_fk_model.sql' % (self.dbtype, self.dbtype_tag),
-                          'a') as f:
-                    f.write(';'.join(dataset_fk))
-                f.close()
 
     # 索引生成
     # 需要剔除主键约束产生的唯一性索引
     def indexesGenerator(self):
         if self.dbtype == 'oracle' or self.dbtype == 'mysql':
-            if self.tables_in is None:
-                params = (self.dbtype, self.dbtype)
-                query = """
-                        SELECT 
-                            table_name,
-                            uniqueness,
-                            index_name,
-                            group_concat(column_name ORDER BY ordinal_position)
-                        FROM tables_indexes
-                        WHERE db_type = %s
-                            AND index_name NOT IN (
-                                SELECT constraint_name
-                                FROM tables_constraints
-                                WHERE db_type = %s
-                                )
-                        GROUP BY table_name,
-                            uniqueness,
-                            index_name
-                        """
-            else:
-                params = (self.dbtype, self.dbtype, tuple(self.tables_in.split(',')))
-                query = """
-                        SELECT 
-                            table_name,
-                            uniqueness,
-                            index_name,
-                            group_concat(column_name ORDER BY ordinal_position)
-                        FROM tables_indexes
-                        WHERE db_type = %s
-                            AND index_name NOT IN (
-                                SELECT constraint_name
-                                FROM tables_constraints
-                                WHERE db_type = %s
-                                AND lower(table_name) in %s
-                                )
-                        GROUP BY table_name,
-                            uniqueness,
-                            index_name      
-                        """
+            params = (self.dbtype, self.keys)
+            query = """
+            SELECT 
+                table_name,
+                uniqueness,
+                index_name,
+                group_concat(column_name ORDER BY ordinal_position)
+            FROM tables_indexes_tabdb ti
+            WHERE db_type = %s
+            AND auth_id = %s
+                AND index_name NOT IN (
+                    SELECT constraint_name
+                    FROM tables_constraints_tabdb tc
+                    WHERE ti.db_type = tc.db_type
+                    AND ti.auth_id = tc.auth_id
+                    )
+            GROUP BY table_name,
+                uniqueness,
+                index_name
+            """
             result = self.dbmgr_executor.dbfetchall(query, params)
             dataset = []
             for elem in result:
@@ -772,14 +714,15 @@ class Modelgenerator():
             f.close()
         elif self.dbtype == 'postgresql':
             query = """
-                    SELECT 
-                        table_name,
-                        index_name,
-                        indexdef
-                    FROM tables_indexes
-                    WHERE db_type = 'POSTGRESQL'
-                    """
-            result = self.dbmgr_executor.dbfetchall(query, None)
+            SELECT 
+                table_name,
+                index_name,
+                indexdef
+            FROM tables_indexes_tabdb
+            WHERE db_type = %s
+            AND auth_id = %s
+            """
+            result = self.dbmgr_executor.dbfetchall(query, (self.dbtype, self.keys))
             dataset = []
             for elem in result:
                 table_name = elem[0]
@@ -839,7 +782,7 @@ class Modeltodb():
                 # 表对象
                 if object == 'table':
                     with open(self.filedir_tab + os.sep + '%s2%s_model.sql' % (self.dbtype, self.dbtype_tag),
-                              'r') as f:
+                              'r', encoding='utf-8') as f:
                         lines = f.readlines()
                     array_tab = ''.join(lines).split(';')
                     # 剔除空元素
@@ -932,9 +875,8 @@ if __name__ == '__main__':
     dbsrc = mdtool.xmler('ORACLE_10.45.59.187_HAINAN').dbCFGInfo()
     # dbtag = mdtool.xmler('ORACLE_172.21.86.201').dbCFGInfo()
     dbtag = mdtool.xmler('POSTGRESQL_10.45.59.178_META').dbCFGInfo()
-    print(dbtag.values())
-    flag = 'table,constraint,index'
-    # flag = 'table'
+    # flag = 'table,constraint,index'
+    flag = 'table'
     # flag = 'constraint'
     # flag = 'index'
     # w = Modeltodb(dbsrc, dbtag, flag)

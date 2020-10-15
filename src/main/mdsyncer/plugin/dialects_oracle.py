@@ -5,11 +5,15 @@
 # @File    : dialects_oracle.py
 
 import mdtool
+import os
 
 
 class OracleDialect():
     def __init__(self, dbsrc, dbmgr, tables_in=None):
         self.tables_in = tables_in
+        # keys
+        for key in dbsrc.keys():
+            self.keys = key
         # values
         for value in dbsrc.values():
             self.host = value['host']
@@ -44,8 +48,9 @@ class OracleDialect():
                 :dbname,
                 ut.table_name,
                 utc.comments
-            FROM user_tables ut, user_tab_comments utc 
-            WHERE ut.table_name=utc.table_name
+            FROM user_tables ut
+            LEFT JOIN user_tab_comments utc 
+            ON ut.table_name=utc.table_name
             """
             dataset = self.dbsrc_executor.dbfetchall(query, params)
         else:
@@ -67,6 +72,12 @@ class OracleDialect():
                 result = self.dbsrc_executor.dbfetchall(query, params)
                 for elem in result:
                     dataset.append(elem)
+                # 表不存在写入日志
+                if len(result) == 0:
+                    mdtool.log.warning("%s表不存在于%s数据库,请检查" % (tab, self.dbtype))
+        # 剔除空元素
+        while '' in dataset:
+            dataset.remove('')
         # 写入dbsyncer管理库 - mysql
         sql = """
         INSERT INTO mdsyncer_tables
@@ -83,6 +94,7 @@ class OracleDialect():
 
     # 字段信息
     def mdsyncer_columns(self):
+        dataset = []
         if self.tables_in is None:
             self.dbmgr_executor.dbexecute("delete from mdsyncer_columns where db_type='%s'" % self.dbtype, None)
             params = {'dbtype': self.dbtype, 'dbname': self.user}
@@ -101,17 +113,43 @@ class OracleDialect():
                 utc.data_scale,
                 ucc.comments
             FROM user_tab_columns utc,
-                user_col_comments ucc
+                user_col_comments ucc,
+                user_tables ut
             WHERE utc.table_name = ucc.table_name
-                AND utc.column_name = ucc.column_name
-                AND utc.table_name IN (
-                    SELECT table_name
-                    FROM user_tables
-                    )
+            AND utc.column_name = ucc.column_name
+            AND utc.table_name = ut.table_name
                """
-            dataset = self.dbsrc_executor.dbfetchall(query, params)
+            try:
+                result = self.dbsrc_executor.dbfetchall(query, params)
+                for elem in result:
+                    dataset.append(elem)
+            except Exception as err:
+                mdtool.log.warning("字段注解乱码" + str(err))
+                query = """
+                SELECT 
+                    :dbtype,
+                    :dbname,
+                    utc.table_name,
+                    utc.column_name,
+                    utc.column_id,
+                    utc.data_default,
+                    utc.nullable,
+                    utc.data_type,
+                    utc.data_length,
+                    utc.data_precision,
+                    utc.data_scale,
+                    '' comments
+                FROM user_tab_columns utc,
+                    user_col_comments ucc,
+                    user_tables ut
+                WHERE utc.table_name = ucc.table_name
+                AND utc.column_name = ucc.column_name
+                AND utc.table_name = ut.table_name
+                """
+                result = self.dbsrc_executor.dbfetchall(query, params)
+                for elem in result:
+                    dataset.append(elem)
         else:
-            dataset = []
             for tab in self.tables_in.split(','):
                 self.dbmgr_executor.dbexecute(
                     "delete from mdsyncer_columns where db_type='%s' and table_name='%s'" % (
@@ -137,9 +175,38 @@ class OracleDialect():
                     AND utc.column_name = ucc.column_name
                     AND lower(utc.table_name) =:tables_in
                 """
-                result = self.dbsrc_executor.dbfetchall(query, params)
-                for elem in result:
-                    dataset.append(elem)
+                try:
+                    result = self.dbsrc_executor.dbfetchall(query, params)
+                    for elem in result:
+                        dataset.append(elem)
+                except Exception as err:
+                    mdtool.log.warning("字段注解乱码" + str(err))
+                    query = """
+                    SELECT 
+                        :dbtype,
+                        :dbname,
+                        utc.table_name,
+                        utc.column_name,
+                        utc.column_id,
+                        utc.data_default,
+                        utc.nullable,
+                        utc.data_type,
+                        utc.data_length,
+                        utc.data_precision,
+                        utc.data_scale,
+                        '' comments
+                    FROM user_tab_columns utc,
+                        user_col_comments ucc
+                    WHERE utc.table_name = ucc.table_name
+                        AND utc.column_name = ucc.column_name
+                        AND lower(utc.table_name) = :tables_in
+            """
+                    result = self.dbsrc_executor.dbfetchall(query, params)
+                    for elem in result:
+                        dataset.append(elem)
+        # 剔除空元素
+        while '' in dataset:
+            dataset.remove('')
         # 写入dbsyncer管理库 - mysql
         sql = """
         INSERT INTO mdsyncer_columns
@@ -196,20 +263,18 @@ class OracleDialect():
                     uc.r_constraint_name,
                     uc.search_condition
                 FROM user_constraints uc,
-                    user_cons_columns ucc
+                    user_cons_columns ucc,
+                    user_tables ut
                 WHERE uc.constraint_name = ucc.constraint_name
                     AND uc.table_name = ucc.table_name
-                    AND uc.table_name IN (
-                        SELECT table_name
-                        FROM user_tables
-                        )
+                    AND uc.table_name = ut.table_name
                 ) t
             LEFT JOIN (
                 SELECT table_name,
                     constraint_name,
-                    wm_concat(column_name) column_name
+                    wm_concat(to_char(column_name)) column_name
                 FROM (
-                    SELECT table_name，constraint_name，column_name
+                    SELECT table_name,constraint_name,column_name
                     FROM user_cons_columns
                     ORDER BY position,
                         table_name
@@ -226,15 +291,32 @@ class OracleDialect():
                 if 'IS NOT NULL' in str(elem[-1]):
                     pass
                 else:
-                    dataset.append(elem)
+                    auth_id = elem[0]
+                    db_type = elem[1]
+                    table_schema = elem[2]
+                    table_name = elem[3]
+                    constraint_name = elem[4]
+                    constraint_type = elem[5]
+                    column_name = elem[6]
+                    ordinal_position = elem[7]
+                    referenced_table_name = elem[8]
+                    if elem[9] is None:
+                        referenced_column_name = elem[9]
+                    else:
+                        referenced_column_name = elem[9].read()
+                    check_condition = elem[10]
+                    dataset.append((
+                        auth_id, db_type, table_schema, table_name, constraint_name, constraint_type, column_name,
+                        ordinal_position, referenced_table_name, referenced_column_name, check_condition))
         else:
             dataset = []
             for tab in self.tables_in.split(','):
                 self.dbmgr_executor.dbexecute(
                     "delete from tables_constraints where db_type='%s' and table_name='%s'" % (self.dbtype, tab), None)
-                params = {'dbtype': self.dbtype, 'dbname': self.user, 'tables_in': tab}
+                params = {'auth_id': self.keys, 'dbtype': self.dbtype, 'dbname': self.user, 'tables_in': tab}
                 query = """
                 SELECT 
+                    :auth_id,
                     :dbtype,
                     :dbname,
                     t.table_name,
@@ -266,14 +348,14 @@ class OracleDialect():
                         user_cons_columns ucc
                     WHERE uc.constraint_name = ucc.constraint_name
                         AND uc.table_name = ucc.table_name
-                        AND lower(uc.table_name) = ：tables_in
+                        AND lower(uc.table_name) = :tables_in
                     ) t
                 LEFT JOIN (
                     SELECT table_name,
                         constraint_name,
-                        wm_concat(column_name) column_name
+                        wm_concat(to_char(column_name)) column_name
                     FROM (
-                        SELECT table_name，constraint_name，column_name
+                        SELECT table_name,constraint_name,column_name
                         FROM user_cons_columns
                         ORDER BY position,
                             table_name
@@ -288,7 +370,26 @@ class OracleDialect():
                     if 'IS NOT NULL' in str(elem[-1]):
                         pass
                     else:
-                        dataset.append(elem)
+                        auth_id = elem[0]
+                        db_type = elem[1]
+                        table_schema = elem[2]
+                        table_name = elem[3]
+                        constraint_name = elem[4]
+                        constraint_type = elem[5]
+                        column_name = elem[6]
+                        ordinal_position = elem[7]
+                        referenced_table_name = elem[8]
+                        if elem[9] is None:
+                            referenced_column_name = elem[9]
+                        else:
+                            referenced_column_name = elem[9].read()
+                        check_condition = elem[10]
+                        dataset.append((
+                             db_type, table_schema, table_name, constraint_name, constraint_type, column_name,
+                            ordinal_position, referenced_table_name, referenced_column_name, check_condition))
+        # 剔除空元素
+        while '' in dataset:
+            dataset.remove('')
         # 写入dbsyncer管理库 - mysql
         sql = """
         INSERT INTO tables_constraints
@@ -324,13 +425,11 @@ class OracleDialect():
                 uic.column_position,
                 ui.index_type
             FROM user_indexes ui,
-                user_ind_columns uic
+                user_ind_columns uic,
+                user_tables ut
             WHERE ui.table_name = uic.table_name
                 AND ui.index_name = uic.index_name
-                AND ui.table_name IN (
-                    SELECT table_name
-                    FROM user_tables
-                    )
+                AND ui.table_name = ut.table_name
                """
             dataset = self.dbsrc_executor.dbfetchall(query, params)
         else:
@@ -353,11 +452,14 @@ class OracleDialect():
                     user_ind_columns uic
                 WHERE ui.table_name = uic.table_name
                     AND ui.index_name = uic.index_name
-                    AND lower(ui.table_name)=：tables_in
+                    AND lower(ui.table_name)=:tables_in
                """
                 result = self.dbsrc_executor.dbfetchall(query, params)
                 for elem in result:
                     dataset.append(elem)
+        # 剔除空元素
+        while '' in dataset:
+            dataset.remove('')
         # 写入dbsyncer管理库 - mysql
         sql = """
         INSERT INTO tables_indexes
@@ -375,13 +477,20 @@ class OracleDialect():
         self.dbmgr_executor.dbexecutemany(sql, dataset)
         mdtool.log.info("%s索引数据数据加载到mdsyncer库表tables_indexes成功" % self.dbtype)
 
-if __name__=='__main__':
-    dbsrc = mdtool.xmler('ORACLE_10.45.59.246').dbCFGInfo()
+
+if __name__ == '__main__':
+    dbsrc = mdtool.xmler('ORACLE_10.45.59.187_HAINAN').dbCFGInfo()
     dbmgr = mdtool.xmler('MGR_172.21.86.205').dbCFGInfo()
-    # tables_in = 'xt_school_res_info,xt_school_ods_info,bfm_bulletin_recipient'
-    # dialect = OracleDialect(dbsrc, dbmgr, tables_in)
-    dialect = OracleDialect(dbsrc, dbmgr)
-    dialect.mdsyncer_tables()
-    dialect.mdsyncer_columns()
+    # tables_in = 'pub_elec_label,pub_drop_item'
+    array = []
+    with open(mdtool.Variable.CONF_PATH + os.sep + 'RC_RES.txt', 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        for line in lines:
+            array.append(line.strip('\n').lower())
+    tables_in = ','.join(array)
+    dialect = OracleDialect(dbsrc, dbmgr, tables_in)
+    # dialect = OracleDialect(dbsrc, dbmgr)
+    # dialect.mdsyncer_tables()
+    # dialect.mdsyncer_columns()
     dialect.tables_constraints()
-    dialect.tables_indexes()
+    # dialect.tables_indexes()
